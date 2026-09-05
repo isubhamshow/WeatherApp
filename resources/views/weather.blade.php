@@ -772,6 +772,10 @@
 
         @media (max-width: 600px) {
 
+            .sun-info {
+                grid-template-columns: 1fr;
+            }
+
             .weather-page {
 
                 padding:
@@ -878,6 +882,38 @@
                 font-weight: 800;
                 color: #111827;
                 letter-spacing: 0.5px;
+            }
+
+            .sun-info {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                margin-top: 20px;
+            }
+
+            .sun-box {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                padding: 18px;
+                border-radius: 18px;
+                background: rgba(255, 255, 255, 0.12);
+                backdrop-filter: blur(10px);
+            }
+
+            .sun-icon {
+                font-size: 32px;
+            }
+
+            .sun-label {
+                font-size: 13px;
+                opacity: 0.75;
+                margin-bottom: 4px;
+            }
+
+            .sun-time {
+                font-size: 20px;
+                font-weight: 700;
             }    
     </style>
 
@@ -1701,6 +1737,32 @@
                     <div class="info-title">
 
                         Feels Like
+
+                        <div class="sun-info">
+
+                            <div class="sun-box">
+                                <div class="sun-icon">🌅</div>
+
+                                <div>
+                                    <div class="sun-label">Sunrise</div>
+                                    <div class="sun-time">
+                                        {{ $sunrise ? \Carbon\Carbon::parse($sunrise)->format('h:i A') : '--' }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="sun-box">
+                                <div class="sun-icon">🌇</div>
+
+                                <div>
+                                    <div class="sun-label">Sunset</div>
+                                    <div class="sun-time">
+                                        {{ $sunset ? \Carbon\Carbon::parse($sunset)->format('h:i A') : '--' }}
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
 
                     </div>
 

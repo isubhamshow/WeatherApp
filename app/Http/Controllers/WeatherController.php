@@ -20,9 +20,7 @@ class WeatherController extends Controller
         $country = '';
 
         // Default timezone
-        // Used only if location timezone cannot be detected
-        $timezone = 'Asia/Kolkata';
-
+        $timezone = 'UTC';
 
         // -----------------------------------------
         // If user selected "Use My Location"
@@ -32,7 +30,6 @@ class WeatherController extends Controller
 
             $latitude = (float) $latitude;
             $longitude = (float) $longitude;
-
 
             // -----------------------------------------
             // Reverse Geocoding
@@ -52,32 +49,23 @@ class WeatherController extends Controller
                 ]
             );
 
-
             if ($reverseGeocodeResponse->successful()) {
 
-                $reverseData =
-                    $reverseGeocodeResponse->json();
+                $reverseData = $reverseGeocodeResponse->json();
 
-                $address =
-                    $reverseData['address'] ?? [];
-
+                $address = $reverseData['address'] ?? [];
 
                 // Try city
-                $city =
-                    $address['city']
+                $city = $address['city']
                     ?? $address['town']
                     ?? $address['municipality']
                     ?? $address['village']
                     ?? $city;
 
-
                 // Country
-                $country =
-                    $address['country']
-                    ?? '';
+                $country = $address['country'] ?? '';
             }
         }
-
 
         // -----------------------------------------
         // City Search using Open-Meteo Geocoding
@@ -95,10 +83,7 @@ class WeatherController extends Controller
                 ]
             );
 
-
-            $geocodingData =
-                $geocodingResponse->json();
-
+            $geocodingData = $geocodingResponse->json();
 
             // -----------------------------------------
             // Check if city exists
@@ -108,71 +93,46 @@ class WeatherController extends Controller
                 !$geocodingResponse->successful() ||
                 empty($geocodingData['results'])
             ) {
-
                 return back()->with(
                     'error',
                     'City not found. Please try another city.'
                 );
             }
 
-
             // -----------------------------------------
             // Get first location result
             // -----------------------------------------
 
-            $location =
-                $geocodingData['results'][0];
+            $location = $geocodingData['results'][0];
 
+            $latitude = $location['latitude'];
+            $longitude = $location['longitude'];
 
-            $latitude =
-                $location['latitude'];
+            $city = $location['name'] ?? $city;
 
-            $longitude =
-                $location['longitude'];
-
-
-            $city =
-                $location['name']
-                ?? $city;
-
-
-            $country =
-                $location['country']
-                ?? '';
-
+            $country = $location['country'] ?? '';
 
             // -----------------------------------------
             // Get timezone from Geocoding result
             // -----------------------------------------
 
-            $timezone =
-                $location['timezone']
-                ?? $timezone;
+            $timezone = $location['timezone'] ?? $timezone;
         }
-
 
         // -----------------------------------------
         // STEP 2: Google Weather API
         // -----------------------------------------
 
-        $apiKey =
-            env('GOOGLE_WEATHER_API_KEY');
-
+        $apiKey = env('GOOGLE_WEATHER_API_KEY');
 
         $response = Http::get(
             'https://weather.googleapis.com/v1/currentConditions:lookup',
             [
-                'key' =>
-                    $apiKey,
-
-                'location.latitude' =>
-                    $latitude,
-
-                'location.longitude' =>
-                    $longitude,
+                'key' => $apiKey,
+                'location.latitude' => $latitude,
+                'location.longitude' => $longitude,
             ]
         );
-
 
         // -----------------------------------------
         // STEP 3: Google Weather API SUCCESS
@@ -180,51 +140,37 @@ class WeatherController extends Controller
 
         if ($response->successful()) {
 
-            $weather =
-                $response->json();
-
+            $weather = $response->json();
 
             // Temperature
             $temperature =
-                $weather['temperature']['degrees']
-                ?? 0;
-
+                $weather['temperature']['degrees'] ?? 0;
 
             // Feels like temperature
             $feelsLike =
                 $weather['feelsLikeTemperature']['degrees']
                 ?? $temperature;
 
-
             // Weather condition
             $condition =
                 $weather['weatherCondition']['description']['text']
                 ?? 'Unknown';
 
-
             // Humidity
             $humidity =
-                $weather['relativeHumidity']
-                ?? 0;
-
+                $weather['relativeHumidity'] ?? 0;
 
             // Wind speed
             $wind =
-                $weather['wind']['speed']['value']
-                ?? 0;
-
+                $weather['wind']['speed']['value'] ?? 0;
 
             // UV Index
             $uvIndex =
-                $weather['uvIndex']
-                ?? 0;
-
+                $weather['uvIndex'] ?? 0;
 
             // Google weather type
             $weatherType =
-                $weather['weatherCondition']['type']
-                ?? '';
-
+                $weather['weatherCondition']['type'] ?? '';
 
             // -----------------------------------------
             // Convert Google weather condition to icon
@@ -232,47 +178,28 @@ class WeatherController extends Controller
 
             $weatherIcon = match (true) {
 
-                str_contains(
-                    $weatherType,
-                    'THUNDERSTORM'
-                )
+                str_contains($weatherType, 'THUNDERSTORM')
                     => '⛈️',
 
-                str_contains(
-                    $weatherType,
-                    'RAIN'
-                )
+                str_contains($weatherType, 'RAIN')
                     => '🌧️',
 
-                str_contains(
-                    $weatherType,
-                    'DRIZZLE'
-                )
+                str_contains($weatherType, 'DRIZZLE')
                     => '🌦️',
 
-                str_contains(
-                    $weatherType,
-                    'SNOW'
-                )
+                str_contains($weatherType, 'SNOW')
                     => '❄️',
 
-                str_contains(
-                    $weatherType,
-                    'FOG'
-                )
+                str_contains($weatherType, 'FOG')
                     => '🌫️',
 
-                str_contains(
-                    $weatherType,
-                    'CLOUD'
-                )
+                str_contains($weatherType, 'CLOUD')
                     => '☁️',
 
                 default
                     => '☀️',
             };
         }
-
 
         // -----------------------------------------
         // STEP 4: Google API FAILED
@@ -284,20 +211,15 @@ class WeatherController extends Controller
             $fallbackResponse = Http::get(
                 'https://api.open-meteo.com/v1/forecast',
                 [
-                    'latitude' =>
-                        $latitude,
-
-                    'longitude' =>
-                        $longitude,
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
 
                     'current' =>
                         'temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code',
 
-                    'timezone' =>
-                        'auto',
+                    'timezone' => 'auto',
                 ]
             );
-
 
             // -----------------------------------------
             // Check fallback API
@@ -311,19 +233,14 @@ class WeatherController extends Controller
                 );
             }
 
-
-            $fallbackWeather =
-                $fallbackResponse->json();
-
+            $fallbackWeather = $fallbackResponse->json();
 
             // -----------------------------------------
             // Get timezone from fallback API
             // -----------------------------------------
 
             $timezone =
-                $fallbackWeather['timezone']
-                ?? $timezone;
-
+                $fallbackWeather['timezone'] ?? $timezone;
 
             // -----------------------------------------
             // Get fallback weather data
@@ -333,26 +250,21 @@ class WeatherController extends Controller
                 $fallbackWeather['current']['temperature_2m']
                 ?? 0;
 
-
             $feelsLike =
                 $fallbackWeather['current']['apparent_temperature']
                 ?? $temperature;
-
 
             $humidity =
                 $fallbackWeather['current']['relative_humidity_2m']
                 ?? 0;
 
-
             $wind =
                 $fallbackWeather['current']['wind_speed_10m']
                 ?? 0;
 
-
             $weatherCode =
                 $fallbackWeather['current']['weather_code']
                 ?? 0;
-
 
             // -----------------------------------------
             // Weather code → Description
@@ -400,7 +312,6 @@ class WeatherController extends Controller
                     => 'Unknown',
             };
 
-
             // -----------------------------------------
             // Weather code → Icon
             // -----------------------------------------
@@ -416,17 +327,13 @@ class WeatherController extends Controller
                 45, 48
                     => '🌫️',
 
-                51, 53, 55,
-                56, 57
+                51, 53, 55, 56, 57
                     => '🌦️',
 
-                61, 63, 65,
-                66, 67,
-                80, 81, 82
+                61, 63, 65, 66, 67, 80, 81, 82
                     => '🌧️',
 
-                71, 73, 75, 77,
-                85, 86
+                71, 73, 75, 77, 85, 86
                     => '❄️',
 
                 95, 96, 99
@@ -436,12 +343,10 @@ class WeatherController extends Controller
                     => '🌤️',
             };
 
-
             // Open-Meteo current request
             // does not include UV
             $uvIndex = 0;
         }
-
 
         // -----------------------------------------
         // STEP 5: 5-Day Weather Forecast
@@ -450,42 +355,41 @@ class WeatherController extends Controller
         $forecastResponse = Http::get(
             'https://api.open-meteo.com/v1/forecast',
             [
-                'latitude' =>
-                    $latitude,
-
-                'longitude' =>
-                    $longitude,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
 
                 'daily' =>
-                    'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',sunrise,sunset',
+                    'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset',
 
-                'timezone' =>
-                    'auto',
+                'timezone' => 'auto',
 
-                'forecast_days' =>
-                    5,
+                'forecast_days' => 5,
             ]
         );
 
+        // -----------------------------------------
+        // Default Sunrise / Sunset
+        // -----------------------------------------
 
+        $sunrise = null;
+        $sunset = null;
+
+        // -----------------------------------------
         // Default empty forecast
-        $forecast = [];
+        // -----------------------------------------
 
+        $forecast = [];
 
         if ($forecastResponse->successful()) {
 
-            $forecastData =
-                $forecastResponse->json();
-
+            $forecastData = $forecastResponse->json();
 
             // -----------------------------------------
             // Get location timezone
             // -----------------------------------------
 
             $timezone =
-                $forecastData['timezone']
-                ?? $timezone;
-
+                $forecastData['timezone'] ?? $timezone;
 
             // -----------------------------------------
             // Get daily forecast
@@ -493,13 +397,17 @@ class WeatherController extends Controller
 
             if (isset($forecastData['daily'])) {
 
-                $daily =
-                    $forecastData['daily'];
+                $daily = $forecastData['daily'];
 
+                // Today's sunrise / sunset
+                $sunrise =
+                    $daily['sunrise'][0] ?? null;
+
+                $sunset =
+                    $daily['sunset'][0] ?? null;
 
                 $days =
                     count($daily['time'] ?? []);
-
 
                 for (
                     $i = 0;
@@ -508,9 +416,7 @@ class WeatherController extends Controller
                 ) {
 
                     $weatherCode =
-                        $daily['weather_code'][$i]
-                        ?? 0;
-
+                        $daily['weather_code'][$i] ?? 0;
 
                     // -----------------------------------------
                     // Add forecast day
@@ -519,8 +425,7 @@ class WeatherController extends Controller
                     $forecast[] = [
 
                         'date' =>
-                            $daily['time'][$i]
-                            ?? '',
+                            $daily['time'][$i] ?? '',
 
                         'max' =>
                             $daily['temperature_2m_max'][$i]
@@ -534,8 +439,12 @@ class WeatherController extends Controller
                             $daily['precipitation_probability_max'][$i]
                             ?? 0,
 
-                        'sunrise' => $daily['sunrise'][$i] ?? '',
-                        'sunset' => $daily['sunset'][$i] ?? '',    
+                        'sunrise' =>
+                            $daily['sunrise'][$i] ?? '',
+
+                        'sunset' =>
+                            $daily['sunset'][$i] ?? '',
+
                         'icon' => match ($weatherCode) {
 
                             0
@@ -547,8 +456,7 @@ class WeatherController extends Controller
                             45, 48
                                 => '🌫️',
 
-                            51, 53, 55,
-                            56, 57
+                            51, 53, 55, 56, 57
                                 => '🌦️',
 
                             61, 63, 65,
@@ -571,7 +479,6 @@ class WeatherController extends Controller
             }
         }
 
-
         // -----------------------------------------
         // STEP 6: Hourly Weather Forecast
         // -----------------------------------------
@@ -579,47 +486,34 @@ class WeatherController extends Controller
         $hourlyResponse = Http::get(
             'https://api.open-meteo.com/v1/forecast',
             [
-                'latitude' =>
-                    $latitude,
-
-                'longitude' =>
-                    $longitude,
+                'latitude' => $latitude,
+                'longitude' => $longitude,
 
                 'hourly' =>
                     'temperature_2m,weather_code',
 
-                'timezone' =>
-                    'auto',
+                'timezone' => 'auto',
 
-                'forecast_days' =>
-                    2,
+                'forecast_days' => 2,
             ]
         );
 
-
         $hourlyForecast = [];
-
 
         if ($hourlyResponse->successful()) {
 
-            $hourlyData =
-                $hourlyResponse->json();
-
+            $hourlyData = $hourlyResponse->json();
 
             // -----------------------------------------
             // Update timezone from hourly API
             // -----------------------------------------
 
             $timezone =
-                $hourlyData['timezone']
-                ?? $timezone;
-
+                $hourlyData['timezone'] ?? $timezone;
 
             if (isset($hourlyData['hourly'])) {
 
-                $hourly =
-                    $hourlyData['hourly'];
-
+                $hourly = $hourlyData['hourly'];
 
                 // -----------------------------------------
                 // Current hour
@@ -627,14 +521,10 @@ class WeatherController extends Controller
                 // -----------------------------------------
 
                 $currentHour =
-                    now($timezone)->format(
-                        'Y-m-d\TH:00'
-                    );
-
+                    now($timezone)->format('Y-m-d\TH:00');
 
                 $totalHours =
                     count($hourly['time'] ?? []);
-
 
                 for (
                     $i = 0;
@@ -651,7 +541,6 @@ class WeatherController extends Controller
                             $hourly['weather_code'][$i]
                             ?? 0;
 
-
                         // -----------------------------------------
                         // Add hourly forecast
                         // -----------------------------------------
@@ -659,8 +548,7 @@ class WeatherController extends Controller
                         $hourlyForecast[] = [
 
                             'time' =>
-                                $hourly['time'][$i]
-                                ?? '',
+                                $hourly['time'][$i] ?? '',
 
                             'temperature' =>
                                 $hourly['temperature_2m'][$i]
@@ -698,11 +586,9 @@ class WeatherController extends Controller
                             },
                         ];
 
-
                         // Show only next 12 hours
                         if (
-                            count($hourlyForecast)
-                            >= 12
+                            count($hourlyForecast) >= 12
                         ) {
                             break;
                         }
@@ -710,7 +596,6 @@ class WeatherController extends Controller
                 }
             }
         }
-
 
         // -----------------------------------------
         // STEP 7: Send data to Weather UI
@@ -724,8 +609,7 @@ class WeatherController extends Controller
             'country' =>
                 $country,
 
-            // IMPORTANT:
-            // Send location timezone to Blade
+            // Location timezone
             'timezone' =>
                 $timezone,
 
@@ -749,6 +633,13 @@ class WeatherController extends Controller
 
             'uvIndex' =>
                 $uvIndex,
+
+            // Sunrise / Sunset
+            'sunrise' =>
+                $sunrise,
+
+            'sunset' =>
+                $sunset,
 
             'forecast' =>
                 $forecast,
